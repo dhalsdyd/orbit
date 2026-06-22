@@ -44,6 +44,13 @@ This initial version includes a basic `CustomPaint` Orbit Canvas:
 - faint elliptical orbit lines
 - ribbon-style trails whose color, thickness, and instability react to mood
 
+## Brand Assets
+
+Generated launch and store artwork is checked in under `assets/branding/`:
+
+- `orbit_app_icon.png` - 1024x1024 launch icon source
+- `orbit_play_store_feature.png` - 1024x500 Play Store feature graphic
+
 Run on a machine with Flutter installed. If platform directories are not present
 yet, generate them first:
 
