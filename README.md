@@ -62,7 +62,10 @@ personal archive interaction model:
 - meals, cafes, trips, and hobbies render as constellation nodes and nebulae
 - tap satellites or constellation nodes to open glass-style memory cards
 - "Past orbit trail" opens a timeline-style utility view for fast scanning
-- one-tap memory category chips sketch the future frictionless input surface
+- one-tap memory category chips create in-memory records immediately, causing
+  new satellites or constellation nodes to appear without opening the keyboard
+- relationship modes distinguish archive-only inner planets from gentle nudge
+  and reconnect outer planets
 
 ## Brand Assets
 

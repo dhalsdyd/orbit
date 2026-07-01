@@ -1,4 +1,5 @@
 import 'contact_mood.dart';
+import 'relationship_mode.dart';
 
 class OrbitContact {
   const OrbitContact({
@@ -10,6 +11,7 @@ class OrbitContact {
     required this.phaseOffsetRadians,
     required this.planetRadius,
     required this.mood,
+    required this.relationshipMode,
   });
 
   final String id;
@@ -27,4 +29,5 @@ class OrbitContact {
   final double phaseOffsetRadians;
   final double planetRadius;
   final ContactMood mood;
+  final RelationshipMode relationshipMode;
 }

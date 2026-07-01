@@ -2,6 +2,7 @@ import '../../domain/entities/contact_mood.dart';
 import '../../domain/entities/memory_kind.dart';
 import '../../domain/entities/orbit_contact.dart';
 import '../../domain/entities/orbit_memory.dart';
+import '../../domain/entities/relationship_mode.dart';
 
 abstract interface class OrbitContactRepository {
   List<OrbitContact> getContacts();
@@ -24,6 +25,7 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
         phaseOffsetRadians: 0.2,
         planetRadius: 8,
         mood: ContactMood.warm,
+        relationshipMode: RelationshipMode.archiveOnly,
       ),
       OrbitContact(
         id: 'monthly-friend',
@@ -34,6 +36,7 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
         phaseOffsetRadians: 2.1,
         planetRadius: 10,
         mood: ContactMood.calm,
+        relationshipMode: RelationshipMode.gentleNudge,
       ),
       OrbitContact(
         id: 'quarterly-friend',
@@ -44,6 +47,7 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
         phaseOffsetRadians: 4.5,
         planetRadius: 12,
         mood: ContactMood.fractured,
+        relationshipMode: RelationshipMode.reconnect,
       ),
     ];
   }

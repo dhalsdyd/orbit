@@ -8,6 +8,7 @@ import '../../data/repositories/orbit_contact_repository.dart';
 import '../../domain/entities/memory_kind.dart';
 import '../../domain/entities/orbit_contact.dart';
 import '../../domain/entities/orbit_memory.dart';
+import '../../domain/entities/relationship_mode.dart';
 import 'orbit_painter.dart';
 import 'orbit_scene_layout.dart';
 
@@ -29,6 +30,7 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
   Duration _elapsed = Duration.zero;
   String? _selectedContactId;
   String? _selectedMemoryId;
+  int _quickMemorySerial = 0;
 
   OrbitContact? get _selectedContact {
     final id = _selectedContactId;
@@ -118,7 +120,9 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
                 const _HomeHint()
               else
                 _ArchiveControls(
+                  contact: selectedContact,
                   memories: _selectedContactMemories,
+                  onQuickAdd: _addQuickMemory,
                   onShowTimeline: _showTimeline,
                 ),
             ],
@@ -220,6 +224,57 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
     });
   }
 
+  void _addQuickMemory(MemoryKind kind) {
+    final contact = _selectedContact;
+    if (contact == null) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final serial = _quickMemorySerial++;
+    final memory = OrbitMemory(
+      id: 'quick-${contact.id}-${now.microsecondsSinceEpoch}-$serial',
+      contactId: contact.id,
+      kind: kind,
+      title: _quickTitleFor(kind),
+      note: _quickNoteFor(kind, contact.name),
+      occurredOn: now,
+      colorSeed: _quickColorSeedFor(kind),
+    );
+
+    setState(() {
+      _memories.add(memory);
+      _selectedMemoryId = memory.id;
+    });
+
+    if (kind.isGift) {
+      HapticFeedback.heavyImpact();
+    } else {
+      HapticFeedback.mediumImpact();
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF111A3C),
+          content: Text('${kind.label} captured in ${contact.name} Universe.'),
+          duration: const Duration(milliseconds: 1500),
+        ),
+      );
+
+    Future<void>.delayed(const Duration(milliseconds: 1400), () {
+      if (!mounted || _selectedMemoryId != memory.id) {
+        return;
+      }
+
+      setState(() {
+        _selectedMemoryId = null;
+      });
+    });
+  }
+
   Future<void> _showMemoryCard(OrbitMemory memory) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -295,7 +350,7 @@ class _OrbitHeader extends StatelessWidget {
                   Text(
                     contact == null
                         ? 'Tap a planet to drift into its memory archive.'
-                        : '$memoryCount memories orbiting as satellites and stars.',
+                        : '${contact.relationshipMode.label} · $memoryCount memories',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.white.withValues(alpha: 0.58),
                         ),
@@ -344,11 +399,15 @@ class _HomeHint extends StatelessWidget {
 
 class _ArchiveControls extends StatelessWidget {
   const _ArchiveControls({
+    required this.contact,
     required this.memories,
+    required this.onQuickAdd,
     required this.onShowTimeline,
   });
 
+  final OrbitContact contact;
   final List<OrbitMemory> memories;
+  final ValueChanged<MemoryKind> onQuickAdd;
   final VoidCallback onShowTimeline;
 
   @override
@@ -362,16 +421,31 @@ class _ArchiveControls extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Text(
+              contact.relationshipMode.description,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.56),
+                  ),
+            ),
+            const SizedBox(height: 10),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
               runSpacing: 8,
-              children: const [
-                _MemoryChip(label: 'Gift given'),
-                _MemoryChip(label: 'Gift received'),
-                _MemoryChip(label: 'Meal & drinks'),
-                _MemoryChip(label: 'Cafe'),
-                _MemoryChip(label: 'Trip'),
+              children: [
+                for (final kind in const [
+                  MemoryKind.giftGiven,
+                  MemoryKind.giftReceived,
+                  MemoryKind.meal,
+                  MemoryKind.cafe,
+                  MemoryKind.trip,
+                  MemoryKind.hobby,
+                ])
+                  _MemoryChip(
+                    kind: kind,
+                    onPressed: () => onQuickAdd(kind),
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -388,14 +462,24 @@ class _ArchiveControls extends StatelessWidget {
 }
 
 class _MemoryChip extends StatelessWidget {
-  const _MemoryChip({required this.label});
+  const _MemoryChip({
+    required this.kind,
+    required this.onPressed,
+  });
 
-  final String label;
+  final MemoryKind kind;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label),
+    return ActionChip(
+      onPressed: onPressed,
+      avatar: Icon(
+        kind.isGift ? Icons.circle_rounded : Icons.auto_awesome_rounded,
+        size: kind.isGift ? 10 : 16,
+        color: Colors.white.withValues(alpha: 0.70),
+      ),
+      label: Text(kind.label),
       visualDensity: VisualDensity.compact,
       side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
       backgroundColor: const Color(0xFF111A3C).withValues(alpha: 0.70),
@@ -650,4 +734,43 @@ String _formatDate(DateTime date) {
   final day = date.day.toString().padLeft(2, '0');
 
   return '${date.year}.$month.$day';
+}
+
+String _quickTitleFor(MemoryKind kind) {
+  return switch (kind) {
+    MemoryKind.giftGiven => 'Gift given',
+    MemoryKind.giftReceived => 'Gift received',
+    MemoryKind.meal => 'Meal & drinks',
+    MemoryKind.cafe => 'Cafe moment',
+    MemoryKind.trip => 'Place memory',
+    MemoryKind.hobby => 'Shared hobby',
+  };
+}
+
+String _quickNoteFor(MemoryKind kind, String contactName) {
+  return switch (kind) {
+    MemoryKind.giftGiven =>
+      'Captured with one tap. Add the gift name or photo later.',
+    MemoryKind.giftReceived =>
+      'A gift from $contactName. Details can be filled in later.',
+    MemoryKind.meal =>
+      'A shared table became a new star in this relationship.',
+    MemoryKind.cafe =>
+      'A quiet cafe memory captured without opening the keyboard.',
+    MemoryKind.trip =>
+      'A place worth saving as a constellation in this universe.',
+    MemoryKind.hobby =>
+      'Something you did together, saved before the feeling fades.',
+  };
+}
+
+int _quickColorSeedFor(MemoryKind kind) {
+  return switch (kind) {
+    MemoryKind.giftGiven => 0xFFFFD27A,
+    MemoryKind.giftReceived => 0xFFD9C7FF,
+    MemoryKind.meal => 0xFFFF8E3C,
+    MemoryKind.cafe => 0xFFA8D8FF,
+    MemoryKind.trip => 0xFFB48CFF,
+    MemoryKind.hobby => 0xFF65E4FF,
+  };
 }
