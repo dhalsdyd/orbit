@@ -8,6 +8,8 @@ abstract interface class OrbitContactRepository {
   List<OrbitContact> getContacts();
 
   List<OrbitMemory> getMemories();
+
+  Future<void> addMemory(OrbitMemory memory);
 }
 
 class SeedOrbitContactRepository implements OrbitContactRepository {
@@ -120,5 +122,10 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
         photoCount: 7,
       ),
     ];
+  }
+
+  @override
+  Future<void> addMemory(OrbitMemory memory) async {
+    // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
   }
 }

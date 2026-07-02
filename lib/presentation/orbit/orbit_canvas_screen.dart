@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,7 +14,12 @@ import 'orbit_painter.dart';
 import 'orbit_scene_layout.dart';
 
 class OrbitCanvasScreen extends StatefulWidget {
-  const OrbitCanvasScreen({super.key});
+  const OrbitCanvasScreen({
+    required this.repository,
+    super.key,
+  });
+
+  final OrbitContactRepository repository;
 
   @override
   State<OrbitCanvasScreen> createState() => _OrbitCanvasScreenState();
@@ -21,9 +27,6 @@ class OrbitCanvasScreen extends StatefulWidget {
 
 class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
     with SingleTickerProviderStateMixin {
-  final OrbitContactRepository _repository =
-      const SeedOrbitContactRepository();
-
   late final Ticker _ticker;
   late final List<OrbitContact> _contacts;
   late final List<OrbitMemory> _memories;
@@ -62,8 +65,8 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
   @override
   void initState() {
     super.initState();
-    _contacts = _repository.getContacts();
-    _memories = _repository.getMemories();
+    _contacts = widget.repository.getContacts();
+    _memories = widget.repository.getMemories();
     _ticker = createTicker((elapsed) {
       setState(() {
         _elapsed = elapsed;
@@ -246,6 +249,7 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
       _memories.add(memory);
       _selectedMemoryId = memory.id;
     });
+    unawaited(_persistMemory(memory));
 
     if (kind.isGift) {
       HapticFeedback.heavyImpact();
@@ -305,6 +309,26 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
         return _TimelineSheet(memories: _selectedContactMemories);
       },
     );
+  }
+
+  Future<void> _persistMemory(OrbitMemory memory) async {
+    try {
+      await widget.repository.addMemory(memory);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFF2B1020),
+            content: Text('Memory was added here, but local save failed.'),
+          ),
+        );
+    }
   }
 }
 

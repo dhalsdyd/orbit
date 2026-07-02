@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../data/repositories/orbit_contact_repository.dart';
 import '../theme/orbit_theme.dart';
 import 'orbit_canvas_screen.dart';
 
 class OrbitApp extends StatelessWidget {
-  const OrbitApp({super.key});
+  const OrbitApp({
+    required this.repository,
+    super.key,
+  });
+
+  final OrbitContactRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +18,7 @@ class OrbitApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Orbit',
       theme: OrbitTheme.dark(),
-      home: const OrbitCanvasScreen(),
+      home: OrbitCanvasScreen(repository: repository),
     );
   }
 }

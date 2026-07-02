@@ -66,6 +66,19 @@ personal archive interaction model:
   new satellites or constellation nodes to appear without opening the keyboard
 - relationship modes distinguish archive-only inner planets from gentle nudge
   and reconnect outer planets
+- Hive CE local persistence stores memory records on-device so one-tap captures
+  survive app restarts
+
+## Local Persistence
+
+Orbit uses Hive CE as a lightweight on-device NoSQL store. The app opens a Hive
+box during startup, seeds the initial sample memories once, and writes each
+one-tap `OrbitMemory` capture into that box. Contact data is still seeded in
+code for the prototype, while memory history is persisted locally.
+
+The persistence layer intentionally stores maps instead of generated Hive type
+adapters for now. This keeps the prototype easy to evolve while the memory
+schema is still changing.
 
 ## Brand Assets
 
