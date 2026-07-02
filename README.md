@@ -68,6 +68,12 @@ personal archive interaction model:
   and reconnect outer planets
 - Hive CE local persistence stores memory records on-device so one-tap captures
   survive app restarts
+- memory cards support editing title, note, and location, plus deleting a memory
+  from the local archive
+- images can be picked from the device library, copied into app support storage,
+  and shown as thumbnails on memory cards
+- planet entry/exit uses a camera-like zoom transition that fades the home orbit
+  into the selected person's archive universe
 
 ## Local Persistence
 
@@ -79,6 +85,9 @@ code for the prototype, while memory history is persisted locally.
 The persistence layer intentionally stores maps instead of generated Hive type
 adapters for now. This keeps the prototype easy to evolve while the memory
 schema is still changing.
+
+Attached image files are copied into an app-managed `orbit_photos` directory
+before their local paths are stored with the memory record.
 
 ## Brand Assets
 

@@ -15,6 +15,7 @@ class OrbitPainter extends CustomPainter {
     required this.elapsed,
     this.selectedContactId,
     this.selectedMemoryId,
+    this.archiveReveal = 1,
   });
 
   final List<OrbitContact> contacts;
@@ -22,6 +23,7 @@ class OrbitPainter extends CustomPainter {
   final Duration elapsed;
   final String? selectedContactId;
   final String? selectedMemoryId;
+  final double archiveReveal;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -40,7 +42,7 @@ class OrbitPainter extends CustomPainter {
       return;
     }
 
-    _drawPersonalArchive(canvas, size, selectedContact);
+    _drawTransitioningArchive(canvas, size, selectedContact);
   }
 
   OrbitContact? _selectedContact() {
@@ -100,6 +102,59 @@ class OrbitPainter extends CustomPainter {
         palette: palette,
       );
     }
+  }
+
+  void _drawTransitioningArchive(
+    Canvas canvas,
+    Size size,
+    OrbitContact selectedContact,
+  ) {
+    final reveal = archiveReveal.clamp(0, 1).toDouble();
+    final center = OrbitSceneLayout.centerFor(size);
+    final focus = OrbitSceneLayout.focusedPlanetCenter(size);
+
+    _drawWithOpacity(canvas, size, 1 - reveal, () {
+      canvas.save();
+      final scale = 1 + reveal * 0.18;
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(scale);
+      canvas.translate(-center.dx, -center.dy);
+      _drawHomeUniverse(canvas, size);
+      canvas.restore();
+    });
+
+    _drawWithOpacity(canvas, size, reveal, () {
+      canvas.save();
+      final scale = 0.88 + reveal * 0.12;
+      canvas.translate(focus.dx, focus.dy);
+      canvas.scale(scale);
+      canvas.translate(-focus.dx, -focus.dy);
+      _drawPersonalArchive(canvas, size, selectedContact);
+      canvas.restore();
+    });
+  }
+
+  void _drawWithOpacity(
+    Canvas canvas,
+    Size size,
+    double opacity,
+    VoidCallback draw,
+  ) {
+    if (opacity <= 0) {
+      return;
+    }
+
+    if (opacity >= 1) {
+      draw();
+      return;
+    }
+
+    canvas.saveLayer(
+      Offset.zero & size,
+      Paint()..color = Colors.white.withValues(alpha: opacity),
+    );
+    draw();
+    canvas.restore();
   }
 
   void _drawPersonalArchive(
@@ -521,7 +576,8 @@ class OrbitPainter extends CustomPainter {
         oldDelegate.contacts != contacts ||
         oldDelegate.memories != memories ||
         oldDelegate.selectedContactId != selectedContactId ||
-        oldDelegate.selectedMemoryId != selectedMemoryId;
+        oldDelegate.selectedMemoryId != selectedMemoryId ||
+        oldDelegate.archiveReveal != archiveReveal;
   }
 }
 

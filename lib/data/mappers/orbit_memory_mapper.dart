@@ -15,11 +15,16 @@ class OrbitMemoryMapper {
       'colorSeed': memory.colorSeed,
       'location': memory.location,
       'photoCount': memory.photoCount,
+      'photoPaths': memory.photoPaths,
     };
   }
 
   static OrbitMemory fromMap(Map<dynamic, dynamic> map) {
     final kindName = map['kind'] as String? ?? MemoryKind.meal.name;
+    final photoPaths = (map['photoPaths'] as List<dynamic>?)
+            ?.whereType<String>()
+            .toList(growable: false) ??
+        const <String>[];
 
     return OrbitMemory(
       id: map['id'] as String,
@@ -34,6 +39,7 @@ class OrbitMemoryMapper {
       colorSeed: map['colorSeed'] as int,
       location: map['location'] as String?,
       photoCount: map['photoCount'] as int? ?? 0,
+      photoPaths: photoPaths,
     );
   }
 }

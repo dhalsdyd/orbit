@@ -10,6 +10,10 @@ abstract interface class OrbitContactRepository {
   List<OrbitMemory> getMemories();
 
   Future<void> addMemory(OrbitMemory memory);
+
+  Future<void> updateMemory(OrbitMemory memory);
+
+  Future<void> deleteMemory(String memoryId);
 }
 
 class SeedOrbitContactRepository implements OrbitContactRepository {
@@ -126,6 +130,16 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
 
   @override
   Future<void> addMemory(OrbitMemory memory) async {
+    // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
+  }
+
+  @override
+  Future<void> updateMemory(OrbitMemory memory) async {
+    // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
+  }
+
+  @override
+  Future<void> deleteMemory(String memoryId) async {
     // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
   }
 }

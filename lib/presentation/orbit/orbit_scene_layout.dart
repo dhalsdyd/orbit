@@ -174,7 +174,7 @@ class OrbitSceneLayout {
     return OrbitMemoryLayout(
       memory: memory,
       index: index,
-      visualRadius: 9 + memory.photoCount.clamp(0, 4).toDouble() * 0.8,
+      visualRadius: 9 + memory.visiblePhotoCount.clamp(0, 4).toDouble() * 0.8,
       position: Offset(
         center.dx + math.cos(angle) * ringRadius,
         center.dy + math.sin(angle) * ringRadius * orbitVerticalCompression,
@@ -195,7 +195,8 @@ class OrbitSceneLayout {
     return OrbitMemoryLayout(
       memory: memory,
       index: index,
-      visualRadius: 11 + memory.photoCount.clamp(0, 6).toDouble() * 0.45,
+      visualRadius:
+          11 + memory.visiblePhotoCount.clamp(0, 6).toDouble() * 0.45,
       position: Offset(
         center.dx + math.cos(angle) * distance,
         center.dy + math.sin(angle) * distance * 0.64,

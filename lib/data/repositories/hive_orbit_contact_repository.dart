@@ -64,6 +64,16 @@ class HiveOrbitContactRepository implements OrbitContactRepository {
     );
   }
 
+  @override
+  Future<void> updateMemory(OrbitMemory memory) {
+    return addMemory(memory);
+  }
+
+  @override
+  Future<void> deleteMemory(String memoryId) {
+    return _memoryBox.delete(memoryId);
+  }
+
   Future<void> _seedMemoriesIfNeeded() async {
     if (_memoryBox.isNotEmpty) {
       return;
