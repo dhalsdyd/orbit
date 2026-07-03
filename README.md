@@ -74,6 +74,11 @@ personal archive interaction model:
   and shown as thumbnails on memory cards
 - planet entry/exit uses a camera-like zoom transition that fades the home orbit
   into the selected person's archive universe
+- relationship universe decoration adds a diary-decoration style layer:
+  - per-person planet skins
+  - per-person nebula themes
+  - per-memory stickers for satellites and constellation nodes
+  - per-memory emotional stamps rendered as small particle accents
 
 ## Local Persistence
 
@@ -88,6 +93,12 @@ schema is still changing.
 
 Attached image files are copied into an app-managed `orbit_photos` directory
 before their local paths are stored with the memory record.
+
+Person-level decoration settings are stored in a separate Hive box so each
+relationship can keep its own planet skin and nebula theme. Memory-level
+stickers and stamps live with each `OrbitMemory`, making gifts feel like
+decorated satellites and shared places feel like embellished constellation
+entries.
 
 ## Brand Assets
 

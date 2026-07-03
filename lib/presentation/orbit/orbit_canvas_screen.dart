@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../data/repositories/orbit_contact_repository.dart';
 import '../../domain/entities/memory_kind.dart';
 import '../../domain/entities/orbit_contact.dart';
+import '../../domain/entities/orbit_decoration.dart';
 import '../../domain/entities/orbit_memory.dart';
 import '../../domain/entities/relationship_mode.dart';
 import 'orbit_painter.dart';
@@ -33,6 +34,7 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
   late final Ticker _ticker;
   late final AnimationController _archiveTransition;
   late final List<OrbitContact> _contacts;
+  late final List<OrbitDecoration> _decorations;
   late final List<OrbitMemory> _memories;
   Duration _elapsed = Duration.zero;
   String? _selectedContactId;
@@ -66,10 +68,17 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
       ..sort((a, b) => b.occurredOn.compareTo(a.occurredOn));
   }
 
+  OrbitDecoration get _selectedDecoration {
+    final contactId = _selectedContactId ?? _contacts.first.id;
+
+    return _decorationFor(contactId);
+  }
+
   @override
   void initState() {
     super.initState();
     _contacts = widget.repository.getContacts();
+    _decorations = widget.repository.getDecorations();
     _memories = widget.repository.getMemories();
     _ticker = createTicker((elapsed) {
       setState(() {
@@ -115,6 +124,7 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
                       child: CustomPaint(
                         painter: OrbitPainter(
                           contacts: _contacts,
+                          decorations: _decorations,
                           memories: _memories,
                           elapsed: _elapsed,
                           selectedContactId: _selectedContactId,
@@ -143,8 +153,10 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
               else
                 _ArchiveControls(
                   contact: selectedContact,
+                  decoration: _selectedDecoration,
                   memories: _selectedContactMemories,
                   onQuickAdd: _addQuickMemory,
+                  onDecorate: _showDecorateSheet,
                   onShowTimeline: _showTimeline,
                 ),
             ],
@@ -268,6 +280,8 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
       note: _quickNoteFor(kind, contact.name),
       occurredOn: now,
       colorSeed: _quickColorSeedFor(kind),
+      sticker: _quickStickerFor(kind),
+      stamp: _quickStampFor(kind),
     );
 
     setState(() {
@@ -342,6 +356,42 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
     );
   }
 
+  OrbitDecoration _decorationFor(String contactId) {
+    for (final decoration in _decorations) {
+      if (decoration.contactId == contactId) {
+        return decoration;
+      }
+    }
+
+    return OrbitDecoration(
+      contactId: contactId,
+      planetSkin: PlanetSkin.solarGold,
+      nebulaTheme: NebulaTheme.dawn,
+    );
+  }
+
+  Future<void> _showDecorateSheet() async {
+    final contact = _selectedContact;
+    if (contact == null) {
+      return;
+    }
+
+    HapticFeedback.selectionClick();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.32),
+      isScrollControlled: true,
+      builder: (context) {
+        return _DecorateSheet(
+          contact: contact,
+          decoration: _decorationFor(contact.id),
+          onSave: _updateDecoration,
+        );
+      },
+    );
+  }
+
   Future<void> _persistMemory(OrbitMemory memory) async {
     try {
       await widget.repository.addMemory(memory);
@@ -359,6 +409,27 @@ class _OrbitCanvasScreenState extends State<OrbitCanvasScreen>
             content: Text('Memory was added here, but local save failed.'),
           ),
         );
+    }
+  }
+
+  Future<void> _updateDecoration(OrbitDecoration updatedDecoration) async {
+    final index = _decorations.indexWhere(
+      (decoration) => decoration.contactId == updatedDecoration.contactId,
+    );
+
+    setState(() {
+      if (index == -1) {
+        _decorations.add(updatedDecoration);
+      } else {
+        _decorations[index] = updatedDecoration;
+      }
+    });
+
+    try {
+      await widget.repository.updateDecoration(updatedDecoration);
+      _showOrbitSnackBar('Universe decoration saved.');
+    } catch (_) {
+      _showOrbitSnackBar('Decoration changed here, but local save failed.');
     }
   }
 
@@ -558,14 +629,18 @@ class _HomeHint extends StatelessWidget {
 class _ArchiveControls extends StatelessWidget {
   const _ArchiveControls({
     required this.contact,
+    required this.decoration,
     required this.memories,
     required this.onQuickAdd,
+    required this.onDecorate,
     required this.onShowTimeline,
   });
 
   final OrbitContact contact;
+  final OrbitDecoration decoration;
   final List<OrbitMemory> memories;
   final ValueChanged<MemoryKind> onQuickAdd;
+  final VoidCallback onDecorate;
   final VoidCallback onShowTimeline;
 
   @override
@@ -607,10 +682,21 @@ class _ArchiveControls extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              onPressed: memories.isEmpty ? null : onShowTimeline,
-              icon: const Icon(Icons.auto_awesome_rounded),
-              label: const Text('Past orbit trail'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: onDecorate,
+                  icon: const Icon(Icons.brush_rounded),
+                  label: Text(decoration.planetSkin.label),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.tonalIcon(
+                  onPressed: memories.isEmpty ? null : onShowTimeline,
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  label: const Text('Past orbit trail'),
+                ),
+              ],
             ),
           ],
         ),
@@ -643,6 +729,179 @@ class _MemoryChip extends StatelessWidget {
       backgroundColor: const Color(0xFF111A3C).withValues(alpha: 0.70),
       labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.76),
+          ),
+    );
+  }
+}
+
+class _DecorateSheet extends StatefulWidget {
+  const _DecorateSheet({
+    required this.contact,
+    required this.decoration,
+    required this.onSave,
+  });
+
+  final OrbitContact contact;
+  final OrbitDecoration decoration;
+  final Future<void> Function(OrbitDecoration decoration) onSave;
+
+  @override
+  State<_DecorateSheet> createState() => _DecorateSheetState();
+}
+
+class _DecorateSheetState extends State<_DecorateSheet> {
+  late PlanetSkin _planetSkin;
+  late NebulaTheme _nebulaTheme;
+  var _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _planetSkin = widget.decoration.planetSkin;
+    _nebulaTheme = widget.decoration.nebulaTheme;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassSheet(
+      maxHeightFactor: 0.72,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Decorate ${widget.contact.name} Universe',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tune the planet skin and background nebula for this relationship.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.58),
+                ),
+          ),
+          const SizedBox(height: 20),
+          _ChoiceSection(
+            title: 'Planet skin',
+            children: [
+              for (final skin in PlanetSkin.values)
+                _ChoiceChipButton(
+                  label: skin.label,
+                  selected: skin == _planetSkin,
+                  onPressed: () {
+                    setState(() {
+                      _planetSkin = skin;
+                    });
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _ChoiceSection(
+            title: 'Nebula theme',
+            children: [
+              for (final theme in NebulaTheme.values)
+                _ChoiceChipButton(
+                  label: theme.label,
+                  selected: theme == _nebulaTheme,
+                  onPressed: () {
+                    setState(() {
+                      _nebulaTheme = theme;
+                    });
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _isSaving ? null : _save,
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Save decoration'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _isSaving = true;
+    });
+    await widget.onSave(
+      widget.decoration.copyWith(
+        planetSkin: _planetSkin,
+        nebulaTheme: _nebulaTheme,
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+}
+
+class _ChoiceSection extends StatelessWidget {
+  const _ChoiceSection({
+    required this.title,
+    required this.children,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Colors.white.withValues(alpha: 0.72),
+              ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: children,
+        ),
+      ],
+    );
+  }
+}
+
+class _ChoiceChipButton extends StatelessWidget {
+  const _ChoiceChipButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => onPressed(),
+      label: Text(label),
+      side: BorderSide(
+        color: selected
+            ? const Color(0xFFFFD27A).withValues(alpha: 0.64)
+            : Colors.white.withValues(alpha: 0.12),
+      ),
+      selectedColor: const Color(0xFFFFD27A).withValues(alpha: 0.20),
+      backgroundColor: const Color(0xFF111A3C).withValues(alpha: 0.68),
+      labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: Colors.white.withValues(alpha: selected ? 0.94 : 0.72),
           ),
     );
   }
@@ -738,6 +997,38 @@ class _MemorySheetState extends State<_MemorySheet> {
                 controller: _locationController,
                 label: 'Location',
               ),
+              const SizedBox(height: 14),
+              _ChoiceSection(
+                title: 'Sticker',
+                children: [
+                  for (final sticker in MemorySticker.values)
+                    _ChoiceChipButton(
+                      label: sticker.label,
+                      selected: sticker == _memory.sticker,
+                      onPressed: () {
+                        setState(() {
+                          _memory = _memory.copyWith(sticker: sticker);
+                        });
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _ChoiceSection(
+                title: 'Stamp',
+                children: [
+                  for (final stamp in MemoryStamp.values)
+                    _ChoiceChipButton(
+                      label: stamp.label,
+                      selected: stamp == _memory.stamp,
+                      onPressed: () {
+                        setState(() {
+                          _memory = _memory.copyWith(stamp: stamp);
+                        });
+                      },
+                    ),
+                ],
+              ),
             ] else ...[
               Text(
                 _memory.note,
@@ -764,6 +1055,14 @@ class _MemorySheetState extends State<_MemorySheet> {
                     icon: Icons.photo_rounded,
                     label: '${_memory.visiblePhotoCount} photos',
                   ),
+                _MetaPill(
+                  icon: Icons.local_offer_rounded,
+                  label: _memory.sticker.label,
+                ),
+                _MetaPill(
+                  icon: Icons.brightness_5_rounded,
+                  label: _memory.stamp.label,
+                ),
               ],
             ),
             const SizedBox(height: 18),
@@ -854,6 +1153,8 @@ class _MemorySheetState extends State<_MemorySheet> {
       title: title,
       note: _noteController.text.trim(),
       location: locationText.isEmpty ? null : locationText,
+      sticker: _memory.sticker,
+      stamp: _memory.stamp,
     );
 
     setState(() {
@@ -1204,5 +1505,25 @@ int _quickColorSeedFor(MemoryKind kind) {
     MemoryKind.cafe => 0xFFA8D8FF,
     MemoryKind.trip => 0xFFB48CFF,
     MemoryKind.hobby => 0xFF65E4FF,
+  };
+}
+
+MemorySticker _quickStickerFor(MemoryKind kind) {
+  return switch (kind) {
+    MemoryKind.giftGiven || MemoryKind.giftReceived => MemorySticker.ribbon,
+    MemoryKind.meal => MemorySticker.plate,
+    MemoryKind.cafe => MemorySticker.cup,
+    MemoryKind.trip => MemorySticker.flag,
+    MemoryKind.hobby => MemorySticker.sparkle,
+  };
+}
+
+MemoryStamp _quickStampFor(MemoryKind kind) {
+  return switch (kind) {
+    MemoryKind.giftGiven || MemoryKind.giftReceived => MemoryStamp.grateful,
+    MemoryKind.meal => MemoryStamp.cozy,
+    MemoryKind.cafe => MemoryStamp.cozy,
+    MemoryKind.trip => MemoryStamp.bright,
+    MemoryKind.hobby => MemoryStamp.funny,
   };
 }

@@ -1,4 +1,5 @@
 import '../../domain/entities/memory_kind.dart';
+import '../../domain/entities/orbit_decoration.dart';
 import '../../domain/entities/orbit_memory.dart';
 
 class OrbitMemoryMapper {
@@ -16,6 +17,8 @@ class OrbitMemoryMapper {
       'location': memory.location,
       'photoCount': memory.photoCount,
       'photoPaths': memory.photoPaths,
+      'sticker': memory.sticker.name,
+      'stamp': memory.stamp.name,
     };
   }
 
@@ -25,6 +28,9 @@ class OrbitMemoryMapper {
             ?.whereType<String>()
             .toList(growable: false) ??
         const <String>[];
+    final stickerName =
+        map['sticker'] as String? ?? MemorySticker.sparkle.name;
+    final stampName = map['stamp'] as String? ?? MemoryStamp.bright.name;
 
     return OrbitMemory(
       id: map['id'] as String,
@@ -40,6 +46,14 @@ class OrbitMemoryMapper {
       location: map['location'] as String?,
       photoCount: map['photoCount'] as int? ?? 0,
       photoPaths: photoPaths,
+      sticker: MemorySticker.values.firstWhere(
+        (sticker) => sticker.name == stickerName,
+        orElse: () => MemorySticker.sparkle,
+      ),
+      stamp: MemoryStamp.values.firstWhere(
+        (stamp) => stamp.name == stampName,
+        orElse: () => MemoryStamp.bright,
+      ),
     );
   }
 }

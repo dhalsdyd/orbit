@@ -1,5 +1,6 @@
 import '../../domain/entities/contact_mood.dart';
 import '../../domain/entities/memory_kind.dart';
+import '../../domain/entities/orbit_decoration.dart';
 import '../../domain/entities/orbit_contact.dart';
 import '../../domain/entities/orbit_memory.dart';
 import '../../domain/entities/relationship_mode.dart';
@@ -9,11 +10,15 @@ abstract interface class OrbitContactRepository {
 
   List<OrbitMemory> getMemories();
 
+  List<OrbitDecoration> getDecorations();
+
   Future<void> addMemory(OrbitMemory memory);
 
   Future<void> updateMemory(OrbitMemory memory);
 
   Future<void> deleteMemory(String memoryId);
+
+  Future<void> updateDecoration(OrbitDecoration decoration);
 }
 
 class SeedOrbitContactRepository implements OrbitContactRepository {
@@ -129,6 +134,27 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
   }
 
   @override
+  List<OrbitDecoration> getDecorations() {
+    return const [
+      OrbitDecoration(
+        contactId: 'weekly-friend',
+        planetSkin: PlanetSkin.solarGold,
+        nebulaTheme: NebulaTheme.dawn,
+      ),
+      OrbitDecoration(
+        contactId: 'monthly-friend',
+        planetSkin: PlanetSkin.oceanBlue,
+        nebulaTheme: NebulaTheme.deepSea,
+      ),
+      OrbitDecoration(
+        contactId: 'quarterly-friend',
+        planetSkin: PlanetSkin.violetGas,
+        nebulaTheme: NebulaTheme.roseGalaxy,
+      ),
+    ];
+  }
+
+  @override
   Future<void> addMemory(OrbitMemory memory) async {
     // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
   }
@@ -140,6 +166,11 @@ class SeedOrbitContactRepository implements OrbitContactRepository {
 
   @override
   Future<void> deleteMemory(String memoryId) async {
+    // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
+  }
+
+  @override
+  Future<void> updateDecoration(OrbitDecoration decoration) async {
     // Seed data is read-only; UI keeps optimistic in-memory changes for previews.
   }
 }

@@ -2,15 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../domain/entities/contact_mood.dart';
 import '../../domain/entities/memory_kind.dart';
 import '../../domain/entities/orbit_contact.dart';
+import '../../domain/entities/orbit_decoration.dart';
 import '../../domain/entities/orbit_memory.dart';
 import 'orbit_scene_layout.dart';
 
 class OrbitPainter extends CustomPainter {
   const OrbitPainter({
     required this.contacts,
+    required this.decorations,
     required this.memories,
     required this.elapsed,
     this.selectedContactId,
@@ -19,6 +20,7 @@ class OrbitPainter extends CustomPainter {
   });
 
   final List<OrbitContact> contacts;
+  final List<OrbitDecoration> decorations;
   final List<OrbitMemory> memories;
   final Duration elapsed;
   final String? selectedContactId;
@@ -71,7 +73,9 @@ class OrbitPainter extends CustomPainter {
     _drawSun(canvas, center, radius: 18);
 
     for (final layout in planetLayouts) {
-      final palette = _MoodPalette.forMood(layout.contact.mood);
+      final palette = _MoodPalette.forSkin(
+        _decorationFor(layout.contact.id).planetSkin,
+      );
       final memoryCount = _memoriesFor(layout.contact.id).length;
 
       _drawOrbit(canvas, center, layout.orbitRadius);
@@ -164,7 +168,8 @@ class OrbitPainter extends CustomPainter {
   ) {
     final center = OrbitSceneLayout.focusedPlanetCenter(size);
     final planetRadius = OrbitSceneLayout.focusedPlanetRadius(size);
-    final palette = _MoodPalette.forMood(contact.mood);
+    final decoration = _decorationFor(contact.id);
+    final palette = _MoodPalette.forSkin(decoration.planetSkin);
     final contactMemories = _memoriesFor(contact.id);
     final memoryLayouts = OrbitSceneLayout.memoryObjects(
       memories: contactMemories,
@@ -172,7 +177,7 @@ class OrbitPainter extends CustomPainter {
       elapsed: elapsed,
     );
 
-    _drawArchiveNebula(canvas, size, contactMemories);
+    _drawArchiveNebula(canvas, size, contactMemories, decoration.nebulaTheme);
     _drawConstellationLines(canvas, memoryLayouts);
     _drawPersonalOrbitRings(canvas, center);
     _drawPlanet(
@@ -199,6 +204,20 @@ class OrbitPainter extends CustomPainter {
       ..sort((a, b) => b.occurredOn.compareTo(a.occurredOn));
 
     return filtered;
+  }
+
+  OrbitDecoration _decorationFor(String contactId) {
+    for (final decoration in decorations) {
+      if (decoration.contactId == contactId) {
+        return decoration;
+      }
+    }
+
+    return OrbitDecoration(
+      contactId: contactId,
+      planetSkin: PlanetSkin.solarGold,
+      nebulaTheme: NebulaTheme.dawn,
+    );
   }
 
   void _drawBackground(Canvas canvas, Size size, Offset center) {
@@ -398,6 +417,7 @@ class OrbitPainter extends CustomPainter {
     Canvas canvas,
     Size size,
     List<OrbitMemory> contactMemories,
+    NebulaTheme nebulaTheme,
   ) {
     if (contactMemories.isEmpty) {
       return;
@@ -408,9 +428,12 @@ class OrbitPainter extends CustomPainter {
       center: center.translate(0, 12),
       radius: size.shortestSide * 0.48,
     );
+    final themeColors = _nebulaColors(nebulaTheme);
     final colors = [
-      for (final memory in contactMemories.take(4))
-        Color(memory.colorSeed).withValues(alpha: 0.16),
+      themeColors.$1.withValues(alpha: 0.18),
+      for (final memory in contactMemories.take(3))
+        Color(memory.colorSeed).withValues(alpha: 0.13),
+      themeColors.$2.withValues(alpha: 0.14),
       Colors.transparent,
     ];
     final paint = Paint()
@@ -487,6 +510,8 @@ class OrbitPainter extends CustomPainter {
     canvas.drawCircle(layout.position, radius * 2.2, glowPaint);
     canvas.drawCircle(layout.position, radius, satellitePaint);
     _drawTinyMoonTail(canvas, layout.position, color, layout.index);
+    _drawMemorySticker(canvas, layout.position, layout.memory, radius);
+    _drawMemoryStamp(canvas, layout.position, layout.memory, radius);
   }
 
   void _drawTinyMoonTail(
@@ -546,6 +571,156 @@ class OrbitPainter extends CustomPainter {
 
     canvas.drawCircle(layout.position, radius * 2.4, haloPaint);
     _drawStar(canvas, layout.position, radius, nodePaint);
+    _drawMemorySticker(canvas, layout.position, layout.memory, radius);
+    _drawMemoryStamp(canvas, layout.position, layout.memory, radius);
+  }
+
+  (Color, Color) _nebulaColors(NebulaTheme theme) {
+    return switch (theme) {
+      NebulaTheme.dawn => (
+          const Color(0xFFFFD27A),
+          const Color(0xFFFF8EBC),
+        ),
+      NebulaTheme.deepSea => (
+          const Color(0xFF65E4FF),
+          const Color(0xFF233BFF),
+        ),
+      NebulaTheme.roseGalaxy => (
+          const Color(0xFFFF8EBC),
+          const Color(0xFFB48CFF),
+        ),
+      NebulaTheme.snowfall => (
+          const Color(0xFFE8FBFF),
+          const Color(0xFF8EA7FF),
+        ),
+      NebulaTheme.firefly => (
+          const Color(0xFF9BEA7E),
+          const Color(0xFFFFD27A),
+        ),
+    };
+  }
+
+  void _drawMemorySticker(
+    Canvas canvas,
+    Offset position,
+    OrbitMemory memory,
+    double radius,
+  ) {
+    final stickerCenter = position.translate(radius * 1.15, -radius * 1.1);
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = _stickerColor(memory.sticker).withValues(alpha: 0.92);
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.72);
+
+    switch (memory.sticker) {
+      case MemorySticker.ribbon:
+        final path = Path()
+          ..moveTo(stickerCenter.dx - 5, stickerCenter.dy - 4)
+          ..lineTo(stickerCenter.dx, stickerCenter.dy)
+          ..lineTo(stickerCenter.dx - 5, stickerCenter.dy + 4)
+          ..moveTo(stickerCenter.dx + 5, stickerCenter.dy - 4)
+          ..lineTo(stickerCenter.dx, stickerCenter.dy)
+          ..lineTo(stickerCenter.dx + 5, stickerCenter.dy + 4);
+        canvas.drawPath(path, stroke);
+      case MemorySticker.cup:
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: stickerCenter, width: 10, height: 8),
+            const Radius.circular(3),
+          ),
+          paint,
+        );
+        canvas.drawArc(
+          Rect.fromCenter(
+            center: stickerCenter.translate(6, 0),
+            width: 7,
+            height: 7,
+          ),
+          -math.pi / 2,
+          math.pi,
+          false,
+          stroke,
+        );
+      case MemorySticker.plate:
+        canvas.drawCircle(stickerCenter, 5.5, paint);
+        canvas.drawCircle(stickerCenter, 2.6, stroke);
+      case MemorySticker.flag:
+        canvas.drawLine(
+          stickerCenter.translate(-4, 5),
+          stickerCenter.translate(-4, -6),
+          stroke,
+        );
+        final path = Path()
+          ..moveTo(stickerCenter.dx - 3, stickerCenter.dy - 6)
+          ..lineTo(stickerCenter.dx + 6, stickerCenter.dy - 3)
+          ..lineTo(stickerCenter.dx - 3, stickerCenter.dy)
+          ..close();
+        canvas.drawPath(path, paint);
+      case MemorySticker.sparkle:
+        _drawStar(canvas, stickerCenter, 6, paint);
+      case MemorySticker.bubble:
+        canvas.drawOval(
+          Rect.fromCenter(center: stickerCenter, width: 13, height: 9),
+          paint,
+        );
+        final tail = Path()
+          ..moveTo(stickerCenter.dx - 1, stickerCenter.dy + 4)
+          ..lineTo(stickerCenter.dx + 2, stickerCenter.dy + 8)
+          ..lineTo(stickerCenter.dx + 4, stickerCenter.dy + 3)
+          ..close();
+        canvas.drawPath(tail, paint);
+    }
+  }
+
+  void _drawMemoryStamp(
+    Canvas canvas,
+    Offset position,
+    OrbitMemory memory,
+    double radius,
+  ) {
+    final color = _stampColor(memory.stamp);
+    final count = switch (memory.stamp) {
+      MemoryStamp.bright => 5,
+      MemoryStamp.cozy => 4,
+      MemoryStamp.funny => 6,
+      MemoryStamp.grateful => 5,
+      MemoryStamp.longing => 3,
+    };
+    final paint = Paint()..color = color.withValues(alpha: 0.58);
+
+    for (var i = 0; i < count; i++) {
+      final angle = elapsed.inMilliseconds / 1500 + i * math.pi * 2 / count;
+      final point = Offset(
+        position.dx + math.cos(angle) * (radius * 1.75),
+        position.dy + math.sin(angle) * (radius * 1.75),
+      );
+      canvas.drawCircle(point, 1.4 + (i % 2) * 0.6, paint);
+    }
+  }
+
+  Color _stickerColor(MemorySticker sticker) {
+    return switch (sticker) {
+      MemorySticker.ribbon => const Color(0xFFFF8EBC),
+      MemorySticker.cup => const Color(0xFFA8D8FF),
+      MemorySticker.plate => const Color(0xFFFFD27A),
+      MemorySticker.flag => const Color(0xFFB48CFF),
+      MemorySticker.sparkle => const Color(0xFFE8FBFF),
+      MemorySticker.bubble => const Color(0xFF65E4FF),
+    };
+  }
+
+  Color _stampColor(MemoryStamp stamp) {
+    return switch (stamp) {
+      MemoryStamp.bright => const Color(0xFFFFF3C7),
+      MemoryStamp.cozy => const Color(0xFFFFD27A),
+      MemoryStamp.funny => const Color(0xFF65E4FF),
+      MemoryStamp.grateful => const Color(0xFFFF8EBC),
+      MemoryStamp.longing => const Color(0xFFB48CFF),
+    };
   }
 
   void _drawStar(Canvas canvas, Offset center, double radius, Paint paint) {
@@ -574,6 +749,7 @@ class OrbitPainter extends CustomPainter {
   bool shouldRepaint(covariant OrbitPainter oldDelegate) {
     return oldDelegate.elapsed != elapsed ||
         oldDelegate.contacts != contacts ||
+        oldDelegate.decorations != decorations ||
         oldDelegate.memories != memories ||
         oldDelegate.selectedContactId != selectedContactId ||
         oldDelegate.selectedMemoryId != selectedMemoryId ||
@@ -600,9 +776,9 @@ class _MoodPalette {
   final double instability;
   final double sizeScale;
 
-  factory _MoodPalette.forMood(ContactMood mood) {
-    return switch (mood) {
-      ContactMood.warm => const _MoodPalette(
+  factory _MoodPalette.forSkin(PlanetSkin skin) {
+    return switch (skin) {
+      PlanetSkin.solarGold => const _MoodPalette(
           head: Color(0xFFFFD27A),
           tail: Color(0xFFFF6B6B),
           core: Color(0xFFFFB84D),
@@ -611,7 +787,7 @@ class _MoodPalette {
           instability: 0,
           sizeScale: 1.08,
         ),
-      ContactMood.calm => const _MoodPalette(
+      PlanetSkin.oceanBlue => const _MoodPalette(
           head: Color(0xFFA8D8FF),
           tail: Color(0xFF5B7CFA),
           core: Color(0xFF72B7FF),
@@ -620,7 +796,7 @@ class _MoodPalette {
           instability: 0,
           sizeScale: 1,
         ),
-      ContactMood.fractured => const _MoodPalette(
+      PlanetSkin.violetGas => const _MoodPalette(
           head: Color(0xFFD9C7FF),
           tail: Color(0xFF65E4FF),
           core: Color(0xFFB48CFF),
@@ -628,6 +804,24 @@ class _MoodPalette {
           glow: Color(0xFFAA7CFF),
           instability: 1,
           sizeScale: 0.94,
+        ),
+      PlanetSkin.forestMoss => const _MoodPalette(
+          head: Color(0xFFC9F2A4),
+          tail: Color(0xFF5FE3A1),
+          core: Color(0xFF7BCB71),
+          shadow: Color(0xFF16381F),
+          glow: Color(0xFF9BEA7E),
+          instability: 0,
+          sizeScale: 1.02,
+        ),
+      PlanetSkin.crystalIce => const _MoodPalette(
+          head: Color(0xFFE8FBFF),
+          tail: Color(0xFF8EA7FF),
+          core: Color(0xFFBEEFFF),
+          shadow: Color(0xFF183452),
+          glow: Color(0xFFC9F7FF),
+          instability: 0,
+          sizeScale: 0.98,
         ),
     };
   }

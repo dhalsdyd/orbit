@@ -1,4 +1,5 @@
 import 'memory_kind.dart';
+import 'orbit_decoration.dart';
 
 const Object _unchanged = Object();
 
@@ -14,6 +15,8 @@ class OrbitMemory {
     this.location,
     this.photoCount = 0,
     this.photoPaths = const [],
+    this.sticker = MemorySticker.sparkle,
+    this.stamp = MemoryStamp.bright,
   });
 
   final String id;
@@ -26,6 +29,8 @@ class OrbitMemory {
   final String? location;
   final int photoCount;
   final List<String> photoPaths;
+  final MemorySticker sticker;
+  final MemoryStamp stamp;
 
   int get visiblePhotoCount {
     return photoCount + photoPaths.length;
@@ -37,6 +42,8 @@ class OrbitMemory {
     Object? location = _unchanged,
     int? photoCount,
     List<String>? photoPaths,
+    MemorySticker? sticker,
+    MemoryStamp? stamp,
   }) {
     return OrbitMemory(
       id: id,
@@ -49,6 +56,8 @@ class OrbitMemory {
       location: location == _unchanged ? this.location : location as String?,
       photoCount: photoCount ?? this.photoCount,
       photoPaths: photoPaths ?? this.photoPaths,
+      sticker: sticker ?? this.sticker,
+      stamp: stamp ?? this.stamp,
     );
   }
 }
